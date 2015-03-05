@@ -1,3 +1,4 @@
-require "recore/version"
-require 'recore/e_object'
-require 'recore/impl/e_object_impl'
+require 'recore/version'
+require 'recore/util'
+require 'recore/io'
+require 'recore/ecore/parser/ecore_handler'

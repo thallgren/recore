@@ -1,4 +1,11 @@
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in .gemspec
+group(:development, :test) do
+  gem "rspec", "~> 3.2", :require => false
+  gem "rspec-core", "~> 3.2", :require => false
+  gem "rspec-expectations", "~> 3.2", :require => false
+  gem "rspec-mocks", "~> 3.2", :require => false
+  gem "rspec-support", "~> 3.2", :require => false
+end
+
 gemspec
