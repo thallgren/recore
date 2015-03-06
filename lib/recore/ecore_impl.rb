@@ -1,26 +1,14 @@
-require 'recore/ecore'
+require 'recore/ecore/model/model'
 
-module ReCore::ECore
-  class EObjectImpl
-    include EObject
+module ReCore::Ecore::Model
 
-    attr_accessor :e_class
-    attr_accessor :e_resource
-    attr_accessor :e_container
+  EPackage.new.instance_eval do
+    ns_uri = 'http://foo.bar.com/foo'
+    ns_prefix = 'foo'
+    factory_instance_uri = '#//FooFactory'
 
-    # @return [Array<EObject>] The contained objects
-    def e_contents
-      @e_contents ||= []
-    end
+    e_class do
 
-    # @return [Array<EObject>] All contained objects, direct and indirect
-    def e_all_contents
-      e_contents + e_contents.map { |eo| eo.e_all_contents }.flatten
-    end
-
-    # @return [Array<EObject>] The contained objects
-    def e_contents=(e_contents)
-      @e_contents = e_contents
     end
   end
 end

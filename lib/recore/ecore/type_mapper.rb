@@ -5,11 +5,11 @@ class TypeMapper
     @type_map = {}
   end
 
-  # @param feature [ReCore::Ecore::Model::EStructuralFeature]
+  # @param feature [ReCore::Ecore::Model::ETypedElement]
   # @return [String]
-  def map_type(feature)
-    many = feature.upper_bound < 0
-    type = feature.e_type
+  def map_type(typed_element)
+    many = typed_element.upper_bound < 0
+    type = typed_element.e_type
     type_name = type.nil? ? 'Object' : type.name
     if many && type_name == 'EStringToStringMapEntry'
       type_name = 'Map<String,String>'
@@ -21,7 +21,7 @@ class TypeMapper
   end
 
   def map_type_name(type_name)
-    @type_map[type_name] || 'Object'
+    @type_map[type_name] || "UnknownType[#{type_name}]"
   end
 
   # @param type_name [String]
@@ -42,6 +42,7 @@ class TypeMapper
   ecore_mapper.register_type_mapping('EShort', 'Integer')
   ecore_mapper.register_type_mapping('EShortObject', 'Integer')
   ecore_mapper.register_type_mapping('EBoolean', 'Boolean')
+  ecore_mapper.register_type_mapping('EEnumerator', 'EEnumLiteral')
 
   ECORE_MAPPER = ecore_mapper
 end

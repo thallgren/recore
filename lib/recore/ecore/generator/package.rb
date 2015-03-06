@@ -5,7 +5,7 @@ module ReCore::Ecore::Generator
 
   NEWLINE = "\n".freeze
 
-  class Immutable
+  class Package
     include ReCore::Ecore::Model::Acceptor
 
     def initialize
