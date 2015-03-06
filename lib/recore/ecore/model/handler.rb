@@ -1,17 +1,16 @@
 require 'recore/io/xml/parser'
-require 'recore/ecore/parser/acceptor'
+require 'recore/ecore/model/acceptor'
 
-module ReCore::Ecore::Parser
+module ReCore::Ecore::Model
   class Resolver
     include TraversalAcceptor
 
-    def accept_EModelElement(e, args)
-      super
+    def accept_default(e, args)
       e.resolve(args)
     end
   end
 
-  class ECoreHandler
+  class Handler
     include ReCore::IO::XML::Handler
 
     # @return [EPackage]

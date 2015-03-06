@@ -4,13 +4,17 @@ module ReCore::IO::XML
   RSpec.describe Parser do
     describe '#parse' do
       it 'can parse ECore.ecore successfully' do
-        handler = ReCore::Ecore::Parser::ECoreHandler.new
+        handler = ReCore::Ecore::Model::Handler.new
         parser = Parser.new(handler)
         File.open(File.join(ReCore::MODULE_DIR, 'Ecore.ecore')) do |file|
           parser.parse(file)
         end
         result = handler.result
-        expect(result).to be_a(ReCore::Ecore::Parser::EPackage)
+        expect(result).to be_a(ReCore::Ecore::Model::EPackage)
+
+        bld = StringIO.new
+        ReCore::Ecore::Generator::Immutable.new.accept(result, bld)
+        puts bld.string
       end
     end
   end

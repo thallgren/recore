@@ -1,6 +1,6 @@
-require 'recore/ecore/parser/model'
+require 'recore/ecore/model/model'
 
-module ReCore::Ecore::Parser
+module ReCore::Ecore::Model
 
   module Acceptor
     METHOD_PREFIX = 'accept_'.freeze
@@ -13,6 +13,9 @@ module ReCore::Ecore::Parser
         @@names[e.class] = name
       end
       send(name, e, args) unless e.nil?
+    end
+
+    def accept_default(e, args)
     end
 
     def accept_EAnnotation(e, args)
@@ -44,10 +47,11 @@ module ReCore::Ecore::Parser
     end
 
     def accept_EGenericType(e, args)
-      accept_EModelElement(e, args)
+      accept_default(e, args)
     end
 
     def accept_EModelElement(e, args)
+      accept_default(e, args)
     end
 
     def accept_ENamedElement(e, args)
@@ -107,6 +111,7 @@ module ReCore::Ecore::Parser
     end
 
     def accept_EModelElement(e, args)
+      super
       e.annotations.each {|a| accept(a, args)}
     end
 

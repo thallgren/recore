@@ -1,6 +1,6 @@
 module ReCore
 module Ecore
-module Parser
+module Model
 
 EMPTY_ARRAY = [].freeze
 EMPTY_HASH = {}.freeze
@@ -234,10 +234,28 @@ class EClass < EClassifier
     @super_type_uris = super_uris.nil? ? EMPTY_ARRAY : super_uris.split(/\s+/)
     @abstract = (attributes['abstract'] || S_FALSE) == S_TRUE
     @interface = (attributes['interface'] || S_FALSE) == S_TRUE
+    @attributes = nil
+    @generic_super_types = nil
+    @references = nil
+    @operations = nil
+  end
+
+  def <=>(other)
+    if assignable?(other)
+      other.assignable?(self) ? name <=> other.name : -1
+    elsif other.assignable?(self)
+      1
+    else
+      super_types.reduce(-1) { |m, st| (st <=> other) >= 0 ? 1 : m }
+    end
   end
 
   def abstract?
     @abstract
+  end
+
+  def assignable?(other)
+    other.is_a?(EClass) && (other.equal?(self) || other.super_types.any? {|st| assignable?(st)})
   end
 
   # @param attribute [EAttribute]
@@ -380,6 +398,13 @@ class EEnumLiteral < ENamedElement
 end
 
 class EEnum < EDataType
+  # @param attributes [Hash<String,String>]
+  # @api private
+  def initialize(attributes)
+    super
+    @literas = nil
+  end
+
   # @param literal [EENumLiteral]
   # @api private
   def add_literal(literal)
@@ -394,12 +419,13 @@ class EEnum < EDataType
   end
 end
 
-class EGenericType < EModelElement
+class EGenericType
   # @param attributes [Hash<String,String>]
   # @api private
   def initialize(attributes)
     @classifier_uri = attributes['eClassifier']
     @type_parameter_idref = attributes['eTypeParameter']
+    @type_arguments = nil
   end
 
   # @param type_argument [EGenericType]
@@ -428,9 +454,8 @@ class EGenericType < EModelElement
   # param package [EPackage]
   # @api private
   def resolve(package)
-    super
     @classifier = package.resolve_uri(@classifier_uri) unless @classifier_uri.nil?
-    @type_parameter = package.resolve_idref(@type_parameter_idref) unless @type_parameter_idref.nil?
+    @type_parameter = package.resolve_uri(@type_parameter_idref) unless @type_parameter_idref.nil?
   end
 
   # @return [String]
