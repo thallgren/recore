@@ -73,11 +73,14 @@ class ENamedElement < EModelElement
     @name = attributes['name']
   end
 
-  # @param name [String]
   # @return [String]
-  def name(name = (getter=true;nil))
-    @name = name unless getter
+  def name
     @name
+  end
+
+  # @param name [String]
+  def name=(name)
+    @name = name
   end
 end
 
@@ -97,24 +100,33 @@ class ETypedElement < ENamedElement
     @e_type
   end
 
-  # @param e_type_uri [String]
   # @return [String]
-  def e_type_uri(e_type_uri = (getter=true;nil))
-    @e_type_uri unless getter
+  def e_type_uri
     @e_type_uri
   end
 
-  # @param generic_type [EGenericType]
+  # @param e_type_uri [String]
+  def e_type_uri=(e_type_uri)
+    @e_type_uri = e_type_uri
+  end
+
   # @return [EGenericType]
-  def generic_type(generic_type = (getter=true;nil))
-    @generic_type = generic_type unless getter
+  def generic_type
     @generic_type
   end
 
-  # @param lower_bound [Integer]
+  # @param generic_type [EGenericType]
+  def generic_type=(generic_type)
+    @generic_type = generic_type
+  end
+
   # @return [Integer]
-  def lower_bound(lower_bound = (getter=true;nil))
-    @lower_bound = lower_bound unless getter
+  def lower_bound
+    @lower_bound
+  end
+
+  # @param lower_bound [Integer]
+  def lower_bound=(lower_bound)
     @lower_bound = lower_bound
   end
 
@@ -220,39 +232,24 @@ class EPackage < ENamedElement
   end
 
   # @param eclass [EClass]
-  def add_class(eclass = nil, &block)
-    if eclass.nil?
-      raise ArgumentError 'Missing block' unless block_given?
-      eclass = EClass.new
-    end
+  def add_class(eclass)
     @classes ||= {}
     @classes[eclass.name] = eclass
     eclass.package = self
-    eclass.instance_eval &block if block_given?
   end
 
   # @param data_type [EDataType]
-  def add_data_type(data_type = nil, &block)
-    if data_type.nil?
-      raise ArgumentError 'Missing block' unless block_given?
-      data_type = EDataType.new
-    end
+  def add_data_type(data_type)
     @data_types ||= {}
     @data_types[data_type.name] = data_type
-    data_type.package(self)
-    data_type.instance_eval &block if block_given?
+    data_type.package = self
   end
 
   # @param subpackage [EPackage]
-  def add_subpackage(subpackage = nil, &block)
-    if subpackage.nil?
-      raise ArgumentError 'Missing block' unless block_given?
-      subpackage = EPackage.new
-    end
+  def add_subpackage(subpackage)
     @subpackages ||= {}
     @subpackages[subpackage.name] = subpackage
     subpackage.package = self
-    subpackage.instance_eval &block if block_given?
   end
 
   # @return [Hash<String,EClass>]
@@ -270,37 +267,49 @@ class EPackage < ENamedElement
     @factory_instance
   end
 
-  # @param factory_instance_uri [String]
   # @return [String]
-  def factory_instance_uri(factory_instance_uri = (getter=true; nil))
-    @factory_instance_uri = factory_instance_uri unless getter
+  def factory_instance_uri
     @factory_instance_uri
   end
 
-  # @param ns_prefix [String]
+  # @param factory_instance_uri [String]
+  def factory_instance_uri=(factory_instance_uri)
+    @factory_instance_uri = factory_instance_uri
+  end
+
   # @return [String]
-  def ns_prefix(ns_prefix = (getter=true; nil))
-    @ns_prefix = ns_prefix unless getter
+  def ns_prefix
     @ns_prefix
   end
 
-  # @param ns_uri [String]
+  # @param ns_prefix [String]
+  def ns_prefix=(ns_prefix)
+    @ns_prefix = ns_prefix
+  end
+
   # @return [String]
-  def ns_uri(ns_uri = (getter = true; nil))
-    @ns_uri = ns_uri unless getter
+  def ns_uri
     @ns_uri
   end
 
-  # @param package [EPackage]
+  # @param ns_uri [String]
+  def ns_uri=(ns_uri)
+    @ns_uri = ns_uri
+  end
+
   # @return [EPackage]
-  def package(package = (getter = true; nil))
-    @package = package unless getter
+  def package
     @package
+  end
+
+  # @param package [EPackage]
+  def package=(package)
+    @package = package
   end
 
   # @param resource [Resource]
   def resolve(resource)
-    @factory_instance = resource.resolve(@factory_instance_uri) unless @factory_instance_uri.nil?
+    @factory_instance = resource.resolve_uri(@factory_instance_uri) unless @factory_instance_uri.nil?
   end
 
   def resolve_uri(uri)
@@ -319,7 +328,7 @@ class EPackage < ENamedElement
         return path.size > 1 ? classifier.resolve_path(path.drop(1)) : classifier
       end
     end
-    raise ArgumentError "Unable to resolve uri #{uri}"
+    raise ArgumentError, "Unable to resolve uri #{uri}"
   end
 
   # @return [Hash<String,EPackage>]
@@ -336,18 +345,24 @@ class EClassifier < ENamedElement
     @instance_type_name = attributes['instanceTypeName']
   end
 
-  # @param instance_class_name [String]
   # @return [String]
-  def instance_class_name(instance_class_name = (getter=true;nil))
-    @instance_class_name = instance_class_name unless getter
+  def instance_class_name
     @instance_class_name
   end
 
-  # @param instance_type_name [String]
+  # @param instance_class_name [String]
+  def instance_class_name=(instance_class_name)
+    @instance_class_name = instance_class_name
+  end
+
   # @return [String]
-  def instance_type_name(instance_type_name = (getter=true;nil))
-    @instance_type_name = instance_type_name unless getter
+  def instance_type_name
     @instance_type_name
+  end
+
+  # @param instance_type_name [String]
+  def instance_type_name=(instance_type_name)
+    @instance_type_name = instance_type_name
   end
 
   # @param type_parameter [ETypeParameter]
@@ -356,11 +371,14 @@ class EClassifier < ENamedElement
     @type_parameters << type_parameter
   end
 
-  # @param package [EPackage]
   # @return [EPackage]
-  def package(package = (getter=true; nil))
-    @package = package unless getter
+  def package
     @package
+  end
+
+  # @param package [EPackage]
+  def package=(package)
+    @package = package
   end
 
   # @return [Array<ETypeParameter>]
@@ -408,14 +426,9 @@ class EClass < EClassifier
 
   # @param attribute [EAttribute]
   def add_attribute(attribute = nil, &block)
-    if attribute.nil?
-      raise ArgumentError 'Missing block' unless block_given?
-      attribute = EAttribute.new
-    end
     @attributes ||= []
     @attributes << attribute
     attribute.containing_class = self
-    attribute.instance_eval &block if block_given?
   end
 
   # @param generic_super_type [EGenericType]
