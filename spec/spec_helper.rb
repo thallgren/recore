@@ -1,5 +1,6 @@
 require 'rspec'
 require 'recore'
+require 'pry'
 
 # So everyone else doesn't have to include this base constant.
 module ReCore

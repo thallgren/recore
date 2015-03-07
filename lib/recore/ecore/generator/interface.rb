@@ -5,17 +5,81 @@ module ReCore::Ecore::Generator
 
   NEWLINE = "\n".freeze
 
-  class Immutable
+  class ModelString
+    include ReCore::Ecore::Model::Acceptor
+
+    # @param clazz [ReCore::Ecore::Model::EClass]
+    # @param bld [IO]
+    def accept_EClass(clazz, bld)
+      bld << 'Class[' << clazz.name << ']'
+      supers = clazz.super_types
+      bld << '<' << '[' << supers.map { |s| s.name }.join(',') << ']' unless supers.empty?
+      options_start = bld.pos
+      bld << ' ('
+      bld << 'abstract,' if clazz.abstract?
+      bld << 'interface,' if clazz.interface?
+      # @TODO: generic_super_types
+      if options_start == bld.pos - 2
+        bld.pos = options_start
+      else
+        bld.pos = bld.pos - 1
+        bld << ')'
+      end
+    end
+
+    # @param feature [ReCore::Ecore::Model::EStructuralFeature]
+    # @param bld [IO]
+    def bounds(feature, bld)
+      bld << 'bounds=[' << feature.lower_bound << ',' << feature.upper_bound << '],'
+    end
+
+    # @param feature [ReCore::Ecore::Model::EStructuralFeature]
+    # @param bld [IO]
+    def accept_EStructuralFeature(feature, bld)
+      bld << 'unchangeable,' unless feature.changeable?
+      bld << 'derived,' if feature.derived?
+      bld << 'transient,' if feature.transient?
+      bld << 'unsettable,' if feature.unsettable?
+      bld << 'volatile,' if feature.volatile?
+      bld << "default_value_literal='" << feature.default_value_literal << "'," unless feature.default_value_literal.nil?
+      bld.pos = bld.pos - 1
+      bld << ')'
+    end
+
+    # @param attribute [ReCore::Ecore::Model::EAttribute]
+    # @param bld [IO]
+    def accept_EAttribute(attribute, bld)
+      bld << 'Attribute[' << attribute.e_type.name << '] ('
+      bounds(attribute, bld)
+      bld << 'id,' if attribute.id?
+      super
+    end
+
+    # @param reference [ReCore::Ecore::Model::EReference]
+    # @param bld [IO]
+    def accept_EReference(reference, bld)
+      bld << 'Reference[' << reference.e_type.name << '] ('
+      bounds(reference, bld)
+      o = reference.opposite
+      bld << 'opposite=' << o.e_type.name << '/' << o.name << ',' unless o.nil?
+      bld << 'containment,' if reference.containment?
+      bld << 'lazy_proxies,' unless reference.resolve_proxies?
+      super
+    end
+  end
+
+  class Interface
     include ReCore::Ecore::Model::Acceptor
 
     def initialize
       @type_mapper = ReCore::Ecore::TypeMapper::ECORE_MAPPER
       @attribute_name_map = {}
       @method_name_map = {}
+      @model_string = ModelString.new
     end
 
     # @param package [ReCore::Ecore::Model::EPackage]
-    # @param bld [StringIO]
+    # @param bld [IO]
     def accept_EPackage(package, bld)
       bld << 'module '
       bld << package.name.capitalize
@@ -24,7 +88,11 @@ module ReCore::Ecore::Generator
     end
 
     # @param clazz [ReCore::Ecore::Model::EClass]
+    # @param bld [IO]
     def accept_EClass(clazz, bld)
+      bld.puts
+      bld << '  # @model '
+      @model_string.accept(clazz, bld)
       bld.puts
       bld << '  module '
       bld.puts(clazz.name)
@@ -103,6 +171,9 @@ module ReCore::Ecore::Generator
 
       bld = args[1]
       bld.puts
+      bld << '    # @model '
+      @model_string.accept(feature, bld)
+      bld.puts
       bld << '    # @return ['
       bld << type_name
       bld.puts(']')
@@ -112,10 +183,6 @@ module ReCore::Ecore::Generator
       bld << '      subclass_must_implement '
       bld.puts(feature.containing_class.name)
       bld.puts('    end')
-    end
-
-    def map_type(type_name)
-      @type_to_ruby_map[type_name] || type_name
     end
 
     def setter?(operation)

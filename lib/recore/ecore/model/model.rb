@@ -9,12 +9,6 @@ S_FALSE = 'false'.freeze
 
 # @abstract
 class BaseElement
-  # @param attributes [Hash<String,String>]
-  # @api private
-  def initialize(attributes = nil)
-    map_init(attributes) if attributes.is_a?(Hash)
-  end
-
   # @param resource [Resource]
   def resolve(resource)
   end
@@ -47,7 +41,11 @@ class BaseElement
   # @return [Array<String>]
   def array_arg(attributes, name)
     val = attributes[name]
-    val.nil? ? EMPTY_ARRAY : val.split(/\s+/)
+    unless val.nil?
+      val = val.split(/\s+/)
+      val = nil if val.empty?
+    end
+    val
   end
 end
 
@@ -61,7 +59,7 @@ class EModelElement < BaseElement
 
   # @return [Array<EAnnotation>]
   def annotations
-    @annotations.nil? ? EMPTY_ARRAY : @annotations.freeze
+    @annotations.nil? ? EMPTY_ARRAY : @annotations
   end
 end
 
@@ -85,14 +83,22 @@ class ENamedElement < EModelElement
 end
 
 class ETypedElement < ENamedElement
+  def initialize
+    super
+    @lower_bound = 0
+    @upper_bound = 1
+    @ordered = true
+    @unique = false
+  end
+
   # @param attributes [Hash<String,String>]
   def map_init(attributes)
     super
-    @e_type_uri = attributes['eType']
-    @lower_bound = int_arg(attributes, 'lowerBound', 0)
-    @ordered = bool_arg(attributes, 'ordered', true)
-    @unique = bool_arg(attributes, 'unique', false)
-    @upper_bound = int_arg(attributes, 'upperBound', 1)
+    @e_type = attributes['eType']
+    @lower_bound = int_arg(attributes, 'lowerBound', @lower_bound)
+    @ordered = bool_arg(attributes, 'ordered', @ordered)
+    @unique = bool_arg(attributes, 'unique', @unique)
+    @upper_bound = int_arg(attributes, 'upperBound', @upper_bound)
   end
 
   # @return [EClassifier]
@@ -100,14 +106,9 @@ class ETypedElement < ENamedElement
     @e_type
   end
 
-  # @return [String]
-  def e_type_uri
-    @e_type_uri
-  end
-
-  # @param e_type_uri [String]
-  def e_type_uri=(e_type_uri)
-    @e_type_uri = e_type_uri
+  # @param e_type [String]
+  def e_type=(e_type)
+    @e_type = e_type
   end
 
   # @return [EGenericType]
@@ -141,7 +142,7 @@ class ETypedElement < ENamedElement
 
   # @param resource [Resource]
   def resolve(resource)
-    @e_type = resource.resolve_uri(@e_type_uri) unless @e_type_uri.nil?
+    @e_type = resource.resolve_uri(@e_type) if @e_type.is_a?(String)
   end
 
   def unique?
@@ -169,7 +170,7 @@ class EAnnotation < EModelElement
   def map_init(attributes)
     super
     @source = attributes['source']
-    @reference_uris = array_arg(attributes, 'references')
+    @references = array_arg(attributes, 'references')
   end
 
   # @param key [String]
@@ -202,23 +203,17 @@ class EAnnotation < EModelElement
 
   # @param references [Array<String>]
   def references=(references)
-    @references = references
-  end
-
-  # @param resource [Resource]
-  def resolve(resource)
-    super
-    @references = @reference_uris.map {|uri| resource.resolve_uri(uri)}
+    @references = references.nil? || references.empty? ? nil : references
   end
 
   # @return [Map<String,String>]
   def details
-    @details.nil? ? EMPTY_HASH : @details.freeze
+    @details.nil? ? EMPTY_HASH : @details
   end
 
   # @return [Array<Object>]
   def contents
-    @contents.nil? ? EMPTY_ARRAY : @contents.freeze
+    @contents.nil? ? EMPTY_ARRAY : @contents
   end
 end
 
@@ -228,7 +223,7 @@ class EPackage < ENamedElement
     super
     @ns_uri = attributes['nsURI']
     @ns_prefix = attributes['nsPrefix']
-    @factory_instance_uri = attributes['eFactoryInstance']
+    @factory_instance = attributes['eFactoryInstance']
   end
 
   # @param eclass [EClass]
@@ -254,27 +249,47 @@ class EPackage < ENamedElement
 
   # @return [Hash<String,EClass>]
   def classes
-    @classes.nil? ? EMPTY_HASH : @classes.freeze
+    @classes.nil? ? EMPTY_HASH : @classes
   end
 
   # @return [Hash<String,EDataType>]
   def data_types
-    @data_types.nil? ? EMPTY_HASH : @data_types.freeze
+    @data_types.nil? ? EMPTY_HASH : @data_types
   end
 
-  # @return [EFactory]
+  # @return [EFactory|String]
   def factory_instance
     @factory_instance
   end
 
-  # @return [String]
-  def factory_instance_uri
-    @factory_instance_uri
+  # @param factory_instance [EFactory|String]
+  def factory_instance=(factory_instance)
+    @factory_instance = factory_instance
   end
 
-  # @param factory_instance_uri [String]
-  def factory_instance_uri=(factory_instance_uri)
-    @factory_instance_uri = factory_instance_uri
+  # Special inspect method needed to avoid endless recursion since Ruby doesn't do
+  # a very good job of detecting such conditions.
+  def inspect
+    bld = StringIO.new
+    bld << to_s
+    bld.printf("\n @name=\"%s\",", name) unless name.nil?
+    bld.printf("\n @ns_uri=\"%s\",", @ns_uri) unless @ns_uri.nil?
+    bld.printf("\n @ns_prefix=\"%s\",", ns_prefix) unless ns_prefix.nil?
+    unless @classes.nil?
+      @classes.keys.sort.reduce("\n @classes=[") { |m,c| bld << m; bld << c; ',' }
+      bld << '],'
+    end
+    unless @data_types.nil?
+      @data_types.keys.sort.reduce("\n @data_types=[") { |m,c| bld << m; bld << c; ',' }
+      bld << '],'
+    end
+    unless @subpackages.nil?
+      @data_types.keys.sort.reduce("\n @subpackages=[") { |m,c| bld << m; bld << c; ',' }
+      bld << '],'
+    end
+    bld.pos = bld.pos - 1
+    bld << '>'
+    bld.string
   end
 
   # @return [String]
@@ -309,7 +324,7 @@ class EPackage < ENamedElement
 
   # @param resource [Resource]
   def resolve(resource)
-    @factory_instance = resource.resolve_uri(@factory_instance_uri) unless @factory_instance_uri.nil?
+    @factory_instance = resource.resolve_uri(@factory_instance) if @factory_instance.is_a?(String)
   end
 
   def resolve_uri(uri)
@@ -333,7 +348,7 @@ class EPackage < ENamedElement
 
   # @return [Hash<String,EPackage>]
   def subpackages
-    @subpackages.nil? ? EMPTY_HASH : @subpackages.freeze
+    @subpackages.nil? ? EMPTY_HASH : @subpackages
   end
 end
 
@@ -383,17 +398,23 @@ class EClassifier < ENamedElement
 
   # @return [Array<ETypeParameter>]
   def type_parameters
-    @type_parameters.nil? ? EMPTY_ARRAY : @type_parameters.freeze
+    @type_parameters.nil? ? EMPTY_ARRAY : @type_parameters
   end
 end
 
 class EClass < EClassifier
+  def initialize
+    super
+    @abstract = false
+    @interface = false
+  end
+
   # @param attributes [Hash<String,String>]
   def map_init(attributes)
     super
-    @abstract = bool_arg(attributes, 'abstract', false)
-    @interface = bool_arg(attributes, 'interface', false)
-    @super_type_uris = array_arg(attributes, 'eSuperTypes')
+    @abstract = bool_arg(attributes, 'abstract', @abstract)
+    @interface = bool_arg(attributes, 'interface', @interface)
+    @super_types = array_arg(attributes, 'eSuperTypes')
   end
 
   def <=>(other)
@@ -425,7 +446,7 @@ class EClass < EClassifier
   end
 
   # @param attribute [EAttribute]
-  def add_attribute(attribute = nil, &block)
+  def add_attribute(attribute)
     @attributes ||= []
     @attributes << attribute
     attribute.containing_class = self
@@ -456,12 +477,12 @@ class EClass < EClassifier
   end
 
   def attributes
-    @attributes.nil? ? EMPTY_ARRAY : @attributes.freeze
+    @attributes.nil? ? EMPTY_ARRAY : @attributes
   end
 
   # @return [Array<EGenericType>]
   def generic_super_types
-    @generic_super_types.nil? ? EMPTY_ARRAY : @generic_super_types.freeze
+    @generic_super_types.nil? ? EMPTY_ARRAY : @generic_super_types
   end
 
   def interface?
@@ -475,33 +496,28 @@ class EClass < EClassifier
 
   # @return [Array<EOperation>]
   def operations
-    @operations.nil? ? EMPTY_ARRAY : @operations.freeze
+    @operations.nil? ? EMPTY_ARRAY : @operations
   end
 
   # @return [Array<EReference>]
   def references
-    @references.nil? ? EMPTY_ARRAY : @references.freeze
+    @references.nil? ? EMPTY_ARRAY : @references
   end
 
   # @param resource [Resource]
   def resolve(resource)
     super
-    @super_types = @super_type_uris.map {|uri| resource.resolve_uri(uri)}
+    @super_types = @super_types.map {|uri| resource.resolve_uri(uri)} if !@super_types.nil? && @super_types.first.is_a?(String)
   end
 
-  # @return [Array<EClass>]
+  # @return [Array<EClass|String>]
   def super_types
-    @super_types
+    @super_types.nil? ? EMPTY_ARRAY : @super_types
   end
 
-  # @return [Array<String>]
-  def super_type_uris
-    @super_type_uris
-  end
-
-  # @param super_type_uris [Array<String>]
-  def super_type_uris=(super_type_uris)
-    @super_type_uris = super_type_uris
+  # @param super_types [Array<String>]
+  def super_types=(super_types)
+    @super_types = super_types.nil? || super_types.empty? ? nil : super_types
   end
 
   # @param path [Array<String>]
@@ -522,10 +538,15 @@ class EClass < EClassifier
 end
 
 class EDataType < EClassifier
+  def initialize
+    super
+    @serializable = true
+  end
+
   # @param attributes [Hash<String,String>]
   def map_init(attributes)
     super
-    @serializable = bool_arg(attributes, 'serializable', true)
+    @serializable = bool_arg(attributes, 'serializable', @serializable)
   end
 
   def serializable?
@@ -539,10 +560,15 @@ class EDataType < EClassifier
 end
 
 class EEnumLiteral < ENamedElement
+  def initialize
+    super
+    @value = 0
+  end
+
   # @param attributes [Hash<String,String>]
   def map_init(attributes)
     super
-    @value = int_arg(attributes, 'value', 0)
+    @value = int_arg(attributes, 'value', @value)
     @literal = attributes['literal']
   end
 
@@ -587,15 +613,15 @@ class EEnum < EDataType
 
   # @return [Array<EEnumLiteral>]
   def literals
-    @literals.nil? ? EMPTY_ARRAY : @literals.freeze
+    @literals.nil? ? EMPTY_ARRAY : @literals
   end
 end
 
 class EGenericType < BaseElement
   # @param attributes [Hash<String,String>]
   def map_init(attributes)
-    @classifier_uri = attributes['eClassifier']
-    @type_parameter_idref = attributes['eTypeParameter']
+    @classifier = attributes['eClassifier']
+    @type_parameter = attributes['eTypeParameter']
   end
 
   # @param type_argument [EGenericType]
@@ -604,19 +630,14 @@ class EGenericType < BaseElement
     @type_arguments << type_argument
   end
 
-  # @return [EClassifier]
+  # @return [EClassifier|String]
   def classifier
     @classifier
   end
 
-  # @return [String]
-  def classifier_uri
-    @classifier_uri
-  end
-
-  # @param classifier_uri [String]
-  def classifier_uri=(classifier_uri)
-    @classifier_uri = classifier_uri
+  # @param classifier [EClassifier|String]
+  def classifier=(classifier)
+    @classifier = classifier
   end
 
   # @return [EGenericType]
@@ -631,28 +652,23 @@ class EGenericType < BaseElement
 
   # @param resource [Resource]
   def resolve(resource)
-    @classifier = resource.resolve_uri(@classifier_uri) unless @classifier_uri.nil?
-    @type_parameter = resource.resolve_uri(@type_parameter_idref) unless @type_parameter_idref.nil?
+    @classifier = resource.resolve_uri(@classifier) if @classifier.is_a?(String)
+    @type_parameter = resource.resolve_uri(@type_parameter) if @type_parameter.is_a?(String)
   end
 
-  # @return [ETypeParameter]
+  # @return [ETypeParameter|String]
   def type_parameter
     @type_parameter
   end
 
-  # @return [String]
-  def type_parameter_idref
-    @type_parameter_idref
-  end
-
-  # @param type_parameter_idref [String]
-  def type_parameter_idref=(type_parameter_idref)
-    @type_parameter_idref = type_parameter_idref
+  # @param type_parameter [ETypeParameter|String]
+  def type_parameter=(type_parameter)
+    @type_parameter = type_parameter
   end
 
   # @return [Array<ETypeArgument>]
   def type_arguments
-    @type_arguments.nil? ? EMPTY_ARRAY : @type_arguments.freeze
+    @type_arguments.nil? ? EMPTY_ARRAY : @type_arguments
   end
 
   # @param upper_bound [EGenericType]
@@ -667,15 +683,24 @@ class EGenericType < BaseElement
 end
 
 class EStructuralFeature < ETypedElement
+  def initialize
+    super
+    @changeable = true
+    @derived = false
+    @transient = false
+    @unsettable = false
+    @volatile = false
+  end
+
   # @param attributes [Hash<String,String>]
   def map_init(attributes)
     super
-    @changeable = bool_arg(attributes, 'changeable', true)
+    @changeable = bool_arg(attributes, 'changeable', @changeable)
     @default_value_literal = attributes['defaultValueLiteral']
-    @derived = bool_arg(attributes, 'derived', false)
-    @transient = bool_arg(attributes, 'transient', false)
-    @unsettable = bool_arg(attributes, 'unsettable', false)
-    @volatile = bool_arg(attributes, 'volatile', false)
+    @derived = bool_arg(attributes, 'derived', @derived)
+    @transient = bool_arg(attributes, 'transient', @transient)
+    @unsettable = bool_arg(attributes, 'unsettable', @unsettable)
+    @volatile = bool_arg(attributes, 'volatile', @volatile)
   end
 
   def changeable?
@@ -745,10 +770,15 @@ class EStructuralFeature < ETypedElement
 end
 
 class EAttribute < EStructuralFeature
+  def initialize
+    super
+    @id = false
+  end
+
   # @param attributes [Hash<String,String>]
   def map_init(attributes)
     super(attributes)
-    @id = bool_arg(attributes, 'iD', false)
+    @id = bool_arg(attributes, 'iD', @id)
   end
 
   def id?
@@ -762,14 +792,20 @@ class EAttribute < EStructuralFeature
 end
 
 class EReference < EStructuralFeature
+  def initialize
+    super
+    @containment = false
+    @resolve_proxies = true
+  end
+
   # @param attributes [Hash<String,String>]
   # @api private
   def map_init(attributes)
     super
-    @containment = bool_arg(attributes, 'containment', false)
-    @opposite_uri = attributes['eOpposite']
-    @resolve_proxies = bool_arg(attributes, 'resolveProxies', true)
-    @key_uris = array_arg(attributes, 'eKeys')
+    @containment = bool_arg(attributes, 'containment', @containment)
+    @opposite = attributes['eOpposite']
+    @resolve_proxies = bool_arg(attributes, 'resolveProxies', @resolve_proxies)
+    @keys = array_arg(attributes, 'eKeys')
   end
 
   def containment?
@@ -781,34 +817,24 @@ class EReference < EStructuralFeature
     @containment = containment
   end
 
-  # @return [Array[EAttribute]]
+  # @return [Array<String|EAttribute>]
   def keys
-    @keys
+    @keys.nil? ? EMPTY_ARRAY : @keys
   end
 
-  # @return [Array<String>]
-  def key_uris
-    @key_uris
+  # @param keys [Array<String|EAttribute>]
+  def keys=(keys)
+    @keys = keys.nil? || keys.empty? ? nil : keys
   end
 
-  # @param key_uris [Array<String>]
-  def key_uris=(key_uris)
-    @key_uris = key_uris
-  end
-
-  # @return [EReference]
+  # @return [EReference|String]
   def opposite
     @opposite
   end
 
-  # @return [String]
-  def opposite_uri
-    @opposite_uri
-  end
-
-  # @param opposite_uri [String]
-  def opposite_uri=(opposite_uri)
-    @opposite_uri = opposite_uri
+  # @param opposite [EReference|String]
+  def opposite=(opposite)
+    @opposite = opposite
   end
 
   def resolve_proxies?
@@ -823,8 +849,8 @@ class EReference < EStructuralFeature
   # @param resource [Resource]
   def resolve(resource)
     super
-    @opposite = resource.resolve_uri(@opposite_uri) unless @opposite_uri.nil?
-    @keys = @key_uris.map { |k| resource.resolve_uri(k) }
+    @opposite = resource.resolve_uri(@opposite) if @opposite.is_a?(String)
+    @keys = @keys.map { |k| resource.resolve_uri(k) } if !@keys.nil? && @keys.first.is_a?(String)
   end
 end
 
@@ -840,7 +866,7 @@ class ETypeParameter < ENamedElement
 
   # @return [Array<EGenericType]
   def bounds
-    @bounds.nil? ? EMPTY_ARRAY : @bounds.freeze
+    @bounds.nil? ? EMPTY_ARRAY : @bounds
   end
 end
 
@@ -848,7 +874,7 @@ class EOperation < ETypedElement
   # @param attributes [Hash<String,String>]
   def map_init(attributes)
     super
-    @exception_uris = array_arg(attributes, 'eExceptions')
+    @exceptions = array_arg(attributes, 'eExceptions')
   end
 
   # @param parameter [EParameter]
@@ -873,35 +899,30 @@ class EOperation < ETypedElement
     @containing_class = containing_class
   end
 
-  # @return [Array<EClassifier]
+  # @return [Array<EClassifier|String>]
   def exceptions
-    @exceptions
+    @exceptions.nil? ? EMPTY_ARRAY : @exceptions
   end
 
-  # @return [Array<String>]
-  def exception_uris
-    @exception_uris
-  end
-
-  # @param exception_uris [Array<String>]
-  def exception_uris=(exception_uris)
-    @exception_uris = exception_uris
+  # @param exceptions [Array<EClassifier|String>]
+  def exceptions=(exceptions)
+    @exceptions = exceptions.nil? || exceptions.empty? ? nil : exceptions
   end
 
   # @return [Array<EParameter>]
   def parameters
-    @parameters.nil? ? EMPTY_ARRAY : @parameters.freeze
+    @parameters.nil? ? EMPTY_ARRAY : @parameters
   end
 
   # @return [Array<TypeParameter]
   def type_parameters
-    @type_parameters.nil? ? EMPTY_ARRAY : @type_parameters.freeze
+    @type_parameters.nil? ? EMPTY_ARRAY : @type_parameters
   end
 
   # @param resource [Resource]
   def resolve(resource)
     super
-    @exceptions = @exception_uris.map {|e| resource.resolve_uri(e)}
+    @exceptions = @exceptions.map {|e| resource.resolve_uri(e)} if !@exceptions.nil? && @exceptions.first.is_a?(String)
   end
 end
 end

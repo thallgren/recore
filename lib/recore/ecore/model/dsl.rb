@@ -2,26 +2,37 @@ require 'recore/ecore/model/model'
 
 module ReCore::Ecore::Model
   class DslEStructuredFeature
+    # @param type_mapper [ReCore::Ecore::TypeMapper]
     # @param feature [EStructuredFeature]
-    def initialize(feature)
+    def initialize(type_mapper, feature)
+      @type_mapper = type_mapper
       @feature = feature
     end
   end
 
-  class DslEClassAttrs
+  class DslProps
+    # @param type_mapper [ReCore::Ecore::TypeMapper]
     # @param eclass [EClass]
-    def initialize(eclass)
+    def initialize(type_mapper, eclass)
+      @type_mapper = type_mapper
       @eclass = eclass
     end
 
+    def _prop(prop, name, type, required, many, &block)
+      prop.name = name
+      prop.e_type = "#//#{type}"
+      prop.lower_bound = required ? 1 : 0
+      prop.upper_bound = many ? -1 : 1
+      DslEStructuredFeature.new(prop, @type_mapper).instance_eval(&block) if block_given?
+    end
+  end
+
+  class DslEClassAttrs < DslProps
     def _attr(name, type, required = false, many = false, &block)
       attr = EAttribute.new
-      attr.name = name
-      attr.e_type_uri = "#//#{type}"
-      attr.lower_bound = required ? 1 : 0
-      attr.upper_bound = many ? -1 : 1
       @eclass.add_attribute(attr)
-      DslEStructuredFeature.new(attr).instance_eval(&block) if block_given?
+      type = @type_mapper.ruby_to_ecore(type) if type.is_a?(Class)
+      _prop(attr, name,  type, required, many, &block)
     end
 
     def one(name, type, required = false, &block)
@@ -33,24 +44,22 @@ module ReCore::Ecore::Model
     end
   end
 
-  class DslEClassRefs
+  class DslEClassRefs < DslProps
+    # @param type_mapper [ReCore::Ecore::TypeMapper]
     # @param eclass [EClass]
-    def initialize(eclass, containment)
-      @eclass = eclass
+    # @param containment [Boolean]
+    def initialize(type_mapper, eclass, containment)
+      super(type_mapper, eclass)
       @containment = containment
     end
 
     def _ref(name, type, required, opposite, keys, many, &block)
       ref = EReference.new
-      ref.name = name
-      ref.containment = @containment
-      ref.opposite_uri = "#//#{type}" unless opposite.nil?
-      ref.key_uris = keys.map { |k| "#//#{k}" } unless keys.nil?
-      ref.e_type_uri = "#//#{type}"
-      ref.lower_bound = required ? 1 : 0
-      ref.upper_bound = many ? -1 : 1
       @eclass.add_reference(ref)
-      DslEStructuredFeature.new(ref).instance_eval(&block) if block_given?
+      ref.containment = @containment
+      ref.opposite = "#//#{type}/#{opposite}" unless opposite.nil?
+      ref.keys = keys.map { |k| "#//#{k}" } unless keys.nil?
+      _prop(ref, name, type, required, many, &block)
     end
 
     def one(name, type, required = false, opposite = nil, keys = nil, &block)
@@ -64,7 +73,8 @@ module ReCore::Ecore::Model
 
   class DslEClass
     # @param eclass [EClass]
-    def initialize(eclass)
+    def initialize(type_mapper, eclass)
+      @type_mapper = type_mapper
       @eclass = eclass
     end
 
@@ -73,11 +83,11 @@ module ReCore::Ecore::Model
     end
 
     def attributes(&block)
-      DslEClassAttrs.new(@eclass).instance_eval(&block)
+      DslEClassAttrs.new(@type_mapper, @eclass).instance_eval(&block)
     end
 
     def containments(&block)
-      DslEClassRefs.new(@eclass, true).instance_eval(&block)
+      DslEClassRefs.new(@type_mapper, @eclass, true).instance_eval(&block)
     end
 
     def interface
@@ -85,7 +95,7 @@ module ReCore::Ecore::Model
     end
 
     def references(&block)
-      DslEClassRefs.new(@eclass, false).instance_eval(&block)
+      DslEClassRefs.new(@type_mapper, @eclass, false).instance_eval(&block)
     end
 
     def super_class(name)
@@ -93,12 +103,13 @@ module ReCore::Ecore::Model
     end
 
     def super_classes(*names)
-      @eclass.super_type_uris = names.map { |n| "#//#{n}" }
+      @eclass.super_types = names.map { |n| "#//#{n}" }
     end
   end
 
   class DslEPackage
-    def initialize(package)
+    def initialize(type_mapper, package)
+      @type_mapper = type_mapper
       @package = package
     end
 
@@ -106,7 +117,7 @@ module ReCore::Ecore::Model
       eclass = EClass.new
       eclass.name = name
       @package.add_class(eclass)
-      DslEClass.new(eclass).instance_eval(&block) if block_given?
+      DslEClass.new(@type_mapper, eclass).instance_eval(&block) if block_given?
     end
 
     def add_data_type(name, instance_class_name = nil, serializable = true)
@@ -120,20 +131,36 @@ module ReCore::Ecore::Model
 
   class DSL
     def initialize
+      handler = ReCore::Ecore::Model::Handler.new
+      parser = ReCore::IO::XML::Parser.new(handler)
+      File.open(File.join(RECORE_ROOT, 'model', 'Ecore.ecore')) do |file|
+        parser.parse(file)
+      end
+      @ecore = handler.result
       @package = EPackage.new
+      @type_mapper = ReCore::Ecore::TypeMapper::ECORE_MAPPER
     end
 
     def package(name, ns_uri = nil, &block)
       package = @package
+      package.name = name
       package.ns_uri = ns_uri
       package.ns_prefix = name.downcase
-      package.factory_instance_uri = "#//#{name}Factory"
-      DslEPackage.new(package).instance_eval &block
+      DslEPackage.new(@type_mapper, package).instance_eval &block
       package
     end
 
     def resolve
-      @package.resolve(@package)
+      ReCore::Ecore::Model::Resolver.new.accept(@package, self)
+      @package
+    end
+
+    def resolve_uri(uri)
+      begin
+        @package.resolve_uri(uri)
+      rescue ArgumentError
+        @ecore.resolve_uri(uri)
+      end
     end
   end
 end

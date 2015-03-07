@@ -68,103 +68,120 @@ module ReCore::Ecore::Model
     end
 
     def EPackage(attributes)
-      elem = EPackage.new(attributes)
+      elem = EPackage.new
+      elem.map_init(attributes)
       @current.last.add_subpackage(elem) unless @current.empty?
       @current.push(elem)
     end
 
     def eAnnotations(attributes)
-      elem = EAnnotation.new(attributes)
+      elem = EAnnotation.new
+      elem.map_init(attributes)
       @current.last.add_annotation(elem)
       @current.push(elem)
     end
 
     def eBounds(attributes)
-      elem = EGenericType.new(attributes)
+      elem = EGenericType.new
+      elem.map_init(attributes)
       @current.last.add_bound(elem)
       @current.push(elem)
     end
 
     def eClasses(attributes)
-      elem = EClass.new(attributes)
+      elem = EClass.new
+      elem.map_init(attributes)
       @current.last.add_class(elem)
       @current.push(elem)
     end
 
     def eDataTypes(attributes)
-      elem = EDataType.new(attributes)
+      elem = EDataType.new
+      elem.map_init(attributes)
       @current.last.add_data_type(elem)
       @current.push(elem)
     end
 
     def eEnums(attributes)
-      elem = EEnum.new(attributes)
+      elem = EEnum.new
+      elem.map_init(attributes)
       @current.last.add_data_type(elem)
       @current.push(elem)
     end
 
     def eGenericType(attributes)
-      elem = EGenericType.new(attributes)
+      elem = EGenericType.new
+      elem.map_init(attributes)
       @current.last.generic_type = elem
       @current.push(elem)
     end
 
     def eGenericSuperTypes(attributes)
-      elem = EGenericType.new(attributes)
+      elem = EGenericType.new
+      elem.map_init(attributes)
       @current.last.add_generic_super_type(elem)
       @current.push(elem)
     end
 
     def eLiterals(attributes)
-      elem = EEnumLiteral.new(attributes)
+      elem = EEnumLiteral.new
+      elem.map_init(attributes)
       @current.last.add_literal(elem)
       @current.push(elem)
     end
 
     def eLowerBound(attributes)
-      elem = EGenericType.new(attributes)
+      elem = EGenericType.new
+      elem.map_init(attributes)
       @current.last.lower_bound = elem
       @current.push(elem)
     end
 
     def eUpperBound(attributes)
-      elem = EGenericType.new(attributes)
+      elem = EGenericType.new
+      elem.map_init(attributes)
       @current.last.upper_bound = elem
       @current.push(elem)
     end
 
     def eOperations(attributes)
-      elem = EOperation.new(attributes)
+      elem = EOperation.new
+      elem.map_init(attributes)
       @current.last.add_operation(elem)
       @current.push(elem)
     end
 
     def eParameters(attributes)
-      elem = EParameter.new(attributes)
+      elem = EParameter.new
+      elem.map_init(attributes)
       @current.last.add_parameter(elem)
       @current.push(elem)
     end
 
     def eAttributes(attributes)
-      elem = EAttribute.new(attributes)
+      elem = EAttribute.new
+      elem.map_init(attributes)
       @current.last.add_attribute(elem)
       @current.push(elem)
     end
 
     def eReferences(attributes)
-      elem = EReference.new(attributes)
+      elem = EReference.new
+      elem.map_init(attributes)
       @current.last.add_reference(elem)
       @current.push(elem)
     end
 
     def eTypeArguments(attributes)
-      elem = EGenericType.new(attributes)
+      elem = EGenericType.new
+      elem.map_init(attributes)
       @current.last.add_type_argument(elem)
       @current.push(elem)
     end
 
     def eTypeParameters(attributes)
-      elem = ETypeParameter.new(attributes)
+      elem = ETypeParameter.new
+      elem.map_init(attributes)
       @current.last.add_type_parameter(elem)
       @current.push(elem)
     end

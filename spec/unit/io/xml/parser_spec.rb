@@ -13,7 +13,7 @@ module ReCore::IO::XML
         expect(result).to be_a(ReCore::Ecore::Model::EPackage)
 
         bld = StringIO.new
-        ReCore::Ecore::Generator::Immutable.new.accept(result, bld)
+        ReCore::Ecore::Generator::Interface.new.accept(result, bld)
         puts bld.string
       end
     end
