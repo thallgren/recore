@@ -1,4 +1,4 @@
-require 'recore/ecore/model/acceptor'
+require 'recore/ecore/acceptor'
 require 'recore/ecore/type_mapper'
 
 module ReCore::Ecore::Generator
@@ -6,7 +6,7 @@ module ReCore::Ecore::Generator
   NEWLINE = "\n".freeze
 
   class Package
-    include ReCore::Ecore::Model::Acceptor
+    include ReCore::Ecore::Acceptor
 
     def initialize
       @type_mapper = ReCore::Ecore::TypeMapper::ECORE_MAPPER

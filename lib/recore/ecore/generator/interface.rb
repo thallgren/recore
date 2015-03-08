@@ -1,4 +1,4 @@
-require 'recore/ecore/model/acceptor'
+require 'recore/ecore/acceptor'
 require 'recore/ecore/type_mapper'
 
 module ReCore::Ecore::Generator
@@ -6,70 +6,90 @@ module ReCore::Ecore::Generator
   NEWLINE = "\n".freeze
 
   class ModelString
-    include ReCore::Ecore::Model::Acceptor
+    include ReCore::Ecore::Acceptor
 
+    # @param options [Array]
+    # @param bld [IO]
+    def output_options(options, bld)
+      unless options.empty?
+        options.reduce(' (') { |m,o| bld << m; bld << o; ',' }
+        bld << ')'
+      end
+
+    end
     # @param clazz [ReCore::Ecore::Model::EClass]
     # @param bld [IO]
     def accept_EClass(clazz, bld)
-      bld << 'Class[' << clazz.name << ']'
+      bld << 'EClass[' << clazz.name << ']'
       supers = clazz.super_types
       bld << '<' << '[' << supers.map { |s| s.name }.join(',') << ']' unless supers.empty?
-      options_start = bld.pos
-      bld << ' ('
-      bld << 'abstract,' if clazz.abstract?
-      bld << 'interface,' if clazz.interface?
+      options = []
+      options << 'abstract' if clazz.abstract?
+      options << 'interface' if clazz.interface?
       # @TODO: generic_super_types
-      if options_start == bld.pos - 2
-        bld.pos = options_start
-      else
-        bld.pos = bld.pos - 1
-        bld << ')'
+      output_options(options, bld)
+    end
+
+    # @param feature [ReCore::Ecore::Model::EStructuralFeature]
+    # @param options [Array]
+    def bounds(feature, options)
+      unless feature.lower_bound == 0 && feature.upper_bound == 1
+        options << "bounds=[#{feature.lower_bound},#{feature.upper_bound}]"
       end
     end
 
-    # @param feature [ReCore::Ecore::Model::EStructuralFeature]
+    # @param package [ReCore::Ecore::Model::EPackage]
     # @param bld [IO]
-    def bounds(feature, bld)
-      bld << 'bounds=[' << feature.lower_bound << ',' << feature.upper_bound << '],'
+    def accept_EPackage(package, bld)
+      bld << 'EPackage[' << package.name << ']'
+      options = []
+      options << "ns_uri='#{package.ns_uri}'" unless package.ns_uri.nil?
+      options << "ns_prefix=#{package.ns_prefix}" unless package.ns_prefix.nil?
+      output_options(options, bld)
     end
 
     # @param feature [ReCore::Ecore::Model::EStructuralFeature]
-    # @param bld [IO]
-    def accept_EStructuralFeature(feature, bld)
-      bld << 'unchangeable,' unless feature.changeable?
-      bld << 'derived,' if feature.derived?
-      bld << 'transient,' if feature.transient?
-      bld << 'unsettable,' if feature.unsettable?
-      bld << 'volatile,' if feature.volatile?
-      bld << "default_value_literal='" << feature.default_value_literal << "'," unless feature.default_value_literal.nil?
-      bld.pos = bld.pos - 1
-      bld << ')'
+    # @param options [Array]
+    def accept_EStructuralFeature(feature, options)
+      options << 'unchangeable' unless feature.changeable?
+      options << 'derived' if feature.derived?
+      options << 'transient' if feature.transient?
+      options << 'unsettable' if feature.unsettable?
+      options << 'volatile' if feature.volatile?
+      options << "default_value_literal='#{feature.default_value_literal}'" unless feature.default_value_literal.nil?
     end
 
     # @param attribute [ReCore::Ecore::Model::EAttribute]
     # @param bld [IO]
     def accept_EAttribute(attribute, bld)
-      bld << 'Attribute[' << attribute.e_type.name << '] ('
-      bounds(attribute, bld)
-      bld << 'id,' if attribute.id?
-      super
+      type_name = attribute.e_type.nil? ? '?' : attribute.e_type.name
+      bld << 'EAttribute[' << type_name << '] '
+      bld << attribute.name
+      options = []
+      bounds(attribute, options)
+      options << 'id' if attribute.id?
+      super(attribute, options)
+      output_options(options, bld)
     end
 
     # @param reference [ReCore::Ecore::Model::EReference]
     # @param bld [IO]
     def accept_EReference(reference, bld)
-      bld << 'Reference[' << reference.e_type.name << '] ('
-      bounds(reference, bld)
+      bld << 'EReference[' << reference.e_type.name << '] '
+      bld << reference.name
+      options = []
+      bounds(reference, options)
       o = reference.opposite
-      bld << 'opposite=' << o.e_type.name << '/' << o.name << ',' unless o.nil?
-      bld << 'containment,' if reference.containment?
-      bld << 'lazy_proxies,' unless reference.resolve_proxies?
-      super
+      options << "opposite=#{o.e_type.name}/#{o.name}" unless o.nil?
+      options << 'containment' if reference.containment?
+      options << 'lazy_proxies' unless reference.resolve_proxies?
+      super(reference, options)
+      output_options(options, bld)
     end
   end
 
   class Interface
-    include ReCore::Ecore::Model::Acceptor
+    include ReCore::Ecore::Acceptor
 
     def initialize
       @type_mapper = ReCore::Ecore::TypeMapper::ECORE_MAPPER
@@ -81,6 +101,9 @@ module ReCore::Ecore::Generator
     # @param package [ReCore::Ecore::Model::EPackage]
     # @param bld [IO]
     def accept_EPackage(package, bld)
+      bld << '# @model '
+      @model_string.accept(package, bld)
+      bld.puts
       bld << 'module '
       bld << package.name.capitalize
       package.classes.values.sort.each { |c| accept(c, bld) }

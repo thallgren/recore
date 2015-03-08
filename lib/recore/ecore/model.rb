@@ -1,6 +1,4 @@
-module ReCore
-module Ecore
-module Model
+module ReCore::Ecore::Model
 
 EMPTY_ARRAY = [].freeze
 EMPTY_HASH = {}.freeze
@@ -924,8 +922,6 @@ class EOperation < ETypedElement
     super
     @exceptions = @exceptions.map {|e| resource.resolve_uri(e)} if !@exceptions.nil? && @exceptions.first.is_a?(String)
   end
-end
-end
 end
 end
 

@@ -1,14 +1,7 @@
 require 'recore/io/xml/parser'
-require 'recore/ecore/model/acceptor'
 
-module ReCore::Ecore::Model
-  class Resolver
-    include TraversalAcceptor
-
-    def accept_default(e, args)
-      e.resolve(args)
-    end
-  end
+module ReCore::Ecore::Parser
+  Model = ReCore::Ecore::Model
 
   class Handler
     include ReCore::IO::XML::Handler
@@ -30,10 +23,7 @@ module ReCore::Ecore::Model
 
     def end_element(tag)
       element = @current.pop
-      if @current.empty?
-        Resolver.new.accept(element, element)
-        @result = element
-      end
+      @result = element if @current.empty?
     end
 
     def eClassifiers(attributes)
@@ -68,119 +58,119 @@ module ReCore::Ecore::Model
     end
 
     def EPackage(attributes)
-      elem = EPackage.new
+      elem = Model::EPackage.new
       elem.map_init(attributes)
       @current.last.add_subpackage(elem) unless @current.empty?
       @current.push(elem)
     end
 
     def eAnnotations(attributes)
-      elem = EAnnotation.new
+      elem = Model::EAnnotation.new
       elem.map_init(attributes)
       @current.last.add_annotation(elem)
       @current.push(elem)
     end
 
     def eBounds(attributes)
-      elem = EGenericType.new
+      elem = Model::EGenericType.new
       elem.map_init(attributes)
       @current.last.add_bound(elem)
       @current.push(elem)
     end
 
     def eClasses(attributes)
-      elem = EClass.new
+      elem = Model::EClass.new
       elem.map_init(attributes)
       @current.last.add_class(elem)
       @current.push(elem)
     end
 
     def eDataTypes(attributes)
-      elem = EDataType.new
+      elem = Model::EDataType.new
       elem.map_init(attributes)
       @current.last.add_data_type(elem)
       @current.push(elem)
     end
 
     def eEnums(attributes)
-      elem = EEnum.new
+      elem = Model::EEnum.new
       elem.map_init(attributes)
       @current.last.add_data_type(elem)
       @current.push(elem)
     end
 
     def eGenericType(attributes)
-      elem = EGenericType.new
+      elem = Model::EGenericType.new
       elem.map_init(attributes)
       @current.last.generic_type = elem
       @current.push(elem)
     end
 
     def eGenericSuperTypes(attributes)
-      elem = EGenericType.new
+      elem = Model::EGenericType.new
       elem.map_init(attributes)
       @current.last.add_generic_super_type(elem)
       @current.push(elem)
     end
 
     def eLiterals(attributes)
-      elem = EEnumLiteral.new
+      elem = Model::EEnumLiteral.new
       elem.map_init(attributes)
       @current.last.add_literal(elem)
       @current.push(elem)
     end
 
     def eLowerBound(attributes)
-      elem = EGenericType.new
+      elem = Model::EGenericType.new
       elem.map_init(attributes)
       @current.last.lower_bound = elem
       @current.push(elem)
     end
 
     def eUpperBound(attributes)
-      elem = EGenericType.new
+      elem = Model::EGenericType.new
       elem.map_init(attributes)
       @current.last.upper_bound = elem
       @current.push(elem)
     end
 
     def eOperations(attributes)
-      elem = EOperation.new
+      elem = Model::EOperation.new
       elem.map_init(attributes)
       @current.last.add_operation(elem)
       @current.push(elem)
     end
 
     def eParameters(attributes)
-      elem = EParameter.new
+      elem = Model::EParameter.new
       elem.map_init(attributes)
       @current.last.add_parameter(elem)
       @current.push(elem)
     end
 
     def eAttributes(attributes)
-      elem = EAttribute.new
+      elem = Model::EAttribute.new
       elem.map_init(attributes)
       @current.last.add_attribute(elem)
       @current.push(elem)
     end
 
     def eReferences(attributes)
-      elem = EReference.new
+      elem = Model::EReference.new
       elem.map_init(attributes)
       @current.last.add_reference(elem)
       @current.push(elem)
     end
 
     def eTypeArguments(attributes)
-      elem = EGenericType.new
+      elem = Model::EGenericType.new
       elem.map_init(attributes)
       @current.last.add_type_argument(elem)
       @current.push(elem)
     end
 
     def eTypeParameters(attributes)
-      elem = ETypeParameter.new
+      elem = Model::ETypeParameter.new
       elem.map_init(attributes)
       @current.last.add_type_parameter(elem)
       @current.push(elem)

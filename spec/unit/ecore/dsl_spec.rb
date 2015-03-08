@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-module ReCore::Ecore::Model
+module ReCore::Ecore
   RSpec.describe DSL do
     it 'can add class using dsl block' do
       dsl = DSL.new
@@ -21,7 +21,7 @@ module ReCore::Ecore::Model
               one 'string_attr', String, true
               one 'long_attr', 'ELong', true
             end
-            containments do
+            references do
               one 'one_a', 'A', 'many_b' do
               end
             end
@@ -29,14 +29,11 @@ module ReCore::Ecore::Model
         end
       end
       package = dsl.resolve
-      expect(package).to be_a(EPackage)
+      expect(package).to be_a(ReCore::Ecore::Model::EPackage)
       classes = package.classes
       expect(classes).to be_a(Hash)
 
-      bld = StringIO.new
-      ReCore::Ecore::Generator::Interface.new.accept(package, bld)
-      puts bld.string
-
+      ReCore::Ecore::Generator::Interface.new.accept(package, $>)
     end
   end
 end

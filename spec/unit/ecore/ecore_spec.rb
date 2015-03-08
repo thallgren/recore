@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-module ReCore::ECore
+module ReCore::Ecore::Model
   RSpec.describe EObject do
     describe '#subclass_must_implement' do
       it 'will raise exceptions on undefined methods' do

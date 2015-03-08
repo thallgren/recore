@@ -1,6 +1,41 @@
-require 'recore/ecore/model/model'
+require 'recore/ecore/model'
 
-module ReCore::Ecore::Model
+class ReCore::Ecore::DSL
+  Model = ReCore::Ecore::Model
+
+  def initialize
+    handler = ReCore::Ecore::Parser::Handler.new
+    parser = ReCore::IO::XML::Parser.new(handler)
+    File.open(File.join(RECORE_ROOT, 'model', 'Ecore.ecore')) do |file|
+      parser.parse(file)
+    end
+    @ecore = handler.result
+    @package = Model::EPackage.new
+    @type_mapper = ReCore::Ecore::TypeMapper::ECORE_MAPPER
+  end
+
+  def package(name, ns_uri = nil, &block)
+    package = @package
+    package.name = name
+    package.ns_uri = ns_uri
+    package.ns_prefix = name.downcase
+    DslEPackage.new(@type_mapper, package).instance_eval &block
+    package
+  end
+
+  def resolve
+    ReCore::Ecore::Resolver.new.accept(@package, self)
+    @package
+  end
+
+  def resolve_uri(uri)
+    begin
+      @package.resolve_uri(uri)
+    rescue ArgumentError
+      @ecore.resolve_uri(uri)
+    end
+  end
+
   class DslEStructuredFeature
     # @param type_mapper [ReCore::Ecore::TypeMapper]
     # @param feature [EStructuredFeature]
@@ -12,7 +47,7 @@ module ReCore::Ecore::Model
 
   class DslProps
     # @param type_mapper [ReCore::Ecore::TypeMapper]
-    # @param eclass [EClass]
+    # @param eclass [ReCore::Ecore::Model::EClass]
     def initialize(type_mapper, eclass)
       @type_mapper = type_mapper
       @eclass = eclass
@@ -29,7 +64,7 @@ module ReCore::Ecore::Model
 
   class DslEClassAttrs < DslProps
     def _attr(name, type, required = false, many = false, &block)
-      attr = EAttribute.new
+      attr = Model::EAttribute.new
       @eclass.add_attribute(attr)
       type = @type_mapper.ruby_to_ecore(type) if type.is_a?(Class)
       _prop(attr, name,  type, required, many, &block)
@@ -46,7 +81,7 @@ module ReCore::Ecore::Model
 
   class DslEClassRefs < DslProps
     # @param type_mapper [ReCore::Ecore::TypeMapper]
-    # @param eclass [EClass]
+    # @param eclass [ReCore::Ecore::Model::EClass]
     # @param containment [Boolean]
     def initialize(type_mapper, eclass, containment)
       super(type_mapper, eclass)
@@ -54,7 +89,7 @@ module ReCore::Ecore::Model
     end
 
     def _ref(name, type, required, opposite, keys, many, &block)
-      ref = EReference.new
+      ref = Model::EReference.new
       @eclass.add_reference(ref)
       ref.containment = @containment
       ref.opposite = "#//#{type}/#{opposite}" unless opposite.nil?
@@ -72,7 +107,7 @@ module ReCore::Ecore::Model
   end
 
   class DslEClass
-    # @param eclass [EClass]
+    # @param eclass [ReCore::Ecore::Model::EClass]
     def initialize(type_mapper, eclass)
       @type_mapper = type_mapper
       @eclass = eclass
@@ -114,53 +149,18 @@ module ReCore::Ecore::Model
     end
 
     def add_class(name, &block)
-      eclass = EClass.new
+      eclass = Model::EClass.new
       eclass.name = name
       @package.add_class(eclass)
       DslEClass.new(@type_mapper, eclass).instance_eval(&block) if block_given?
     end
 
     def add_data_type(name, instance_class_name = nil, serializable = true)
-      data_type = EDataType.new
+      data_type = Model::EDataType.new
       data_type.name = name
       data_type.instance_class_name = instance_class_name
       data_type.serializable = serializable
       @package.add_data_type(data_type)
-    end
-  end
-
-  class DSL
-    def initialize
-      handler = ReCore::Ecore::Model::Handler.new
-      parser = ReCore::IO::XML::Parser.new(handler)
-      File.open(File.join(RECORE_ROOT, 'model', 'Ecore.ecore')) do |file|
-        parser.parse(file)
-      end
-      @ecore = handler.result
-      @package = EPackage.new
-      @type_mapper = ReCore::Ecore::TypeMapper::ECORE_MAPPER
-    end
-
-    def package(name, ns_uri = nil, &block)
-      package = @package
-      package.name = name
-      package.ns_uri = ns_uri
-      package.ns_prefix = name.downcase
-      DslEPackage.new(@type_mapper, package).instance_eval &block
-      package
-    end
-
-    def resolve
-      ReCore::Ecore::Model::Resolver.new.accept(@package, self)
-      @package
-    end
-
-    def resolve_uri(uri)
-      begin
-        @package.resolve_uri(uri)
-      rescue ArgumentError
-        @ecore.resolve_uri(uri)
-      end
     end
   end
 end

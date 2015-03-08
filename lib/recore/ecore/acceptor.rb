@@ -1,6 +1,6 @@
-require 'recore/ecore/model/model'
+require 'recore/ecore/model'
 
-module ReCore::Ecore::Model
+module ReCore::Ecore
 
   module Acceptor
     METHOD_PREFIX = 'accept_'.freeze

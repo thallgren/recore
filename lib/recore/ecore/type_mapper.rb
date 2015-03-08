@@ -51,6 +51,8 @@ class TypeMapper
   ecore_mapper.register_type_mapping('Integer', 'EInt', 'ELong', 'EShort', 'EIntegerObject', 'ELongObject', 'EShortObject')
   ecore_mapper.register_type_mapping('Boolean', 'EBoolean')
   ecore_mapper.register_type_mapping('EEnumLiteral', 'Enumerator')
+  ecore_mapper.register_type_mapping('Enumerator', 'EEnumerator')
+  ecore_mapper.register_type_mapping('Resource', 'EResource')
 
   ECORE_MAPPER = ecore_mapper
 end
