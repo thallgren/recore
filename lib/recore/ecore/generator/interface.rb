@@ -26,7 +26,7 @@ module ReCore::Ecore::Generator
       options = []
       options << 'abstract' if clazz.abstract?
       options << 'interface' if clazz.interface?
-      # @TODO: generic_super_types
+      # TODO: generic_super_types
       output_options(options, bld)
     end
 
@@ -120,7 +120,7 @@ module ReCore::Ecore::Generator
       bld << '  module '
       bld.puts(clazz.name)
       if clazz.super_types.empty?
-        bld.puts('    include ReCore::Util')
+        bld.puts('    include ReCore::InterfaceSupport')
       else
         clazz.super_types.each do |super_type|
           bld << '    include '

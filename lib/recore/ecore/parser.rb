@@ -12,13 +12,88 @@ module ReCore::Ecore::Parser
     end
 
     def initialize
-      # The stack
-      # @type [Array<String>]
       @current = []
+      attrs = {}
+      attrs[Model::ENamedElement] = keys(
+          'name' => :name=)
+
+      attrs[Model::EAnnotation] = keys(
+          'source' => :source=,
+          'references' => :references=)
+
+      attrs[Model::EGenericType] = keys(
+          'eClassifier' => :classifier=,
+          'eTypeParameter' => :type_parameter=)
+
+      attrs[Model::EClassifier] = attrs[Model::ENamedElement].merge(keys(
+          'instanceClassName' => :instance_class_name=,
+          'instanceTypeName' => :instance_type_name=))
+
+      attrs[Model::EClass] = attrs[Model::EClassifier].merge(keys(
+          'abstract' => :abstract=,
+          'interface' => :interface=,
+          'eSuperTypes' => :super_types=))
+
+      attrs[Model::EDataType] = attrs[Model::EClassifier].merge(keys(
+          'serializable' => :serializable=))
+
+      attrs[Model::EEnum] = attrs[Model::EDataType]
+
+      attrs[Model::EEnumLiteral] = attrs[Model::ENamedElement].merge(keys(
+          'value' => :value=,
+          'literal' => :literal=))
+
+      attrs[Model::EPackage] = attrs[Model::ENamedElement].merge(keys(
+          'nsURI' => :ns_uri=,
+          'nsPrefix' => :ns_prefix=,
+          'eFactoryInstance' => :factory_instance=))
+
+      attrs[Model::ETypedElement] = attrs[Model::ENamedElement].merge(keys(
+        'eType' => :e_type=,
+        'lowerBound' => :lower_bound=,
+        'ordered' => :ordered=,
+        'unique' => :unique=,
+        'upperBound' => :upper_bound=))
+
+      attrs[Model::EOperation] = attrs[Model::ETypedElement].merge(keys(
+        'eExceptions' => :exceptions=))
+
+      attrs[Model::EParameter] = attrs[Model::ETypedElement]
+      attrs[Model::ETypeParameter] = attrs[Model::ENamedElement]
+
+      attrs[Model::EStructuralFeature] = attrs[Model::ETypedElement].merge(keys(
+        'changeable' => :changeable=,
+        'defaultValueLiteral' => :default_value_literal=,
+        'derived' => :derived=,
+        'transient' => :transient=,
+        'unsettable' => :unsettable=,
+        'volatile' => :volatile=))
+
+      attrs[Model::EAttribute] = attrs[Model::EStructuralFeature].merge(keys(
+          'iD' => :id=))
+      attrs[Model::EReference] = attrs[Model::EStructuralFeature].merge(keys(
+          'containment' => :containment=,
+          'eOpposite' => :opposite=,
+          'resolveProxies' => :resolve_proxies=,
+          'eKeys' => :keys=))
+
+      @attrs = attrs
+      @key_attr = ReCore::IO::XML::AttributeKey.new(namespace, 'key', nil)
+      @value_attr = ReCore::IO::XML::AttributeKey.new(namespace, 'value', nil)
+    end
+
+    def new_with_attributes(clazz, attributes)
+      instance = clazz.new
+      assign_attribute_values(instance, @attrs[clazz], attributes)
+      instance
     end
 
     def namespace
       'http://www.eclipse.org/emf/2002/Ecore'
+    end
+
+    def parser=(parser)
+      @parser = parser
     end
 
     def end_element(tag)
@@ -42,146 +117,121 @@ module ReCore::Ecore::Parser
 
     def eStructuralFeatures(attributes)
       xsi_t = xsi_type(attributes)
-      case xsi_type(attributes)
-        when 'EAttribute'
-          eAttributes(attributes)
-        when 'EReference'
-          eReferences(attributes)
-        else
-          raise ParseError "Unrecognized eStructuralFeatures type '#{xsi_t}'"
+      case xsi_t
+      when 'EAttribute'
+        eAttributes(attributes)
+      when 'EReference'
+        eReferences(attributes)
+      else
+        raise ParseError "Unrecognized eStructuralFeatures type '#{xsi_t}'"
       end
     end
 
     def details(attributes)
-      @current.last.add_detail(attributes['key'], attributes['value'])
+      @current.last.add_detail(*values(attributes, @key_attr, @value_attr))
       @current.push(nil) # since this is followed by a pop in end_element
     end
 
     def EPackage(attributes)
-      elem = Model::EPackage.new
-      elem.map_init(attributes)
-      @current.last.add_subpackage(elem) unless @current.empty?
-      @current.push(elem)
+      e = new_with_attributes(Model::EPackage, attributes)
+      @current.last.add_subpackage(e) unless @current.empty?
+      @current.push(e)
     end
 
     def eAnnotations(attributes)
-      elem = Model::EAnnotation.new
-      elem.map_init(attributes)
-      @current.last.add_annotation(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EAnnotation, attributes)
+      @current.last.add_annotation(e)
+      @current.push(e)
     end
 
     def eBounds(attributes)
-      elem = Model::EGenericType.new
-      elem.map_init(attributes)
-      @current.last.add_bound(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EGenericType , attributes)
+      @current.last.add_bound(e)
+      @current.push(e)
     end
 
     def eClasses(attributes)
-      elem = Model::EClass.new
-      elem.map_init(attributes)
-      @current.last.add_class(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EClass, attributes)
+      @current.last.add_class(e)
+      @current.push(e)
     end
 
     def eDataTypes(attributes)
-      elem = Model::EDataType.new
-      elem.map_init(attributes)
-      @current.last.add_data_type(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EDataType, attributes)
+      @current.last.add_data_type(e)
+      @current.push(e)
     end
 
     def eEnums(attributes)
-      elem = Model::EEnum.new
-      elem.map_init(attributes)
-      @current.last.add_data_type(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EEnum, attributes)
+      @current.last.add_data_type(e)
+      @current.push(e)
     end
 
     def eGenericType(attributes)
-      elem = Model::EGenericType.new
-      elem.map_init(attributes)
-      @current.last.generic_type = elem
-      @current.push(elem)
+      e = new_with_attributes(Model::EGenericType , attributes)
+      @current.last.generic_type = e
+      @current.push(e)
     end
 
     def eGenericSuperTypes(attributes)
-      elem = Model::EGenericType.new
-      elem.map_init(attributes)
-      @current.last.add_generic_super_type(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EGenericType , attributes)
+      @current.last.add_generic_super_type(e)
+      @current.push(e)
     end
 
     def eLiterals(attributes)
-      elem = Model::EEnumLiteral.new
-      elem.map_init(attributes)
-      @current.last.add_literal(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EEnumLiteral, attributes)
+      @current.last.add_literal(e)
+      @current.push(e)
     end
 
     def eLowerBound(attributes)
-      elem = Model::EGenericType.new
-      elem.map_init(attributes)
-      @current.last.lower_bound = elem
-      @current.push(elem)
+      e = new_with_attributes(Model::EGenericType , attributes)
+      @current.last.lower_bound = e
+      @current.push(e)
     end
 
     def eUpperBound(attributes)
-      elem = Model::EGenericType.new
-      elem.map_init(attributes)
-      @current.last.upper_bound = elem
-      @current.push(elem)
+      e = new_with_attributes(Model::EGenericType , attributes)
+      @current.last.upper_bound = e
+      @current.push(e)
     end
 
     def eOperations(attributes)
-      elem = Model::EOperation.new
-      elem.map_init(attributes)
-      @current.last.add_operation(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EOperation, attributes)
+      @current.last.add_operation(e)
+      @current.push(e)
     end
 
     def eParameters(attributes)
-      elem = Model::EParameter.new
-      elem.map_init(attributes)
-      @current.last.add_parameter(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EParameter, attributes)
+      @current.last.add_parameter(e)
+      @current.push(e)
     end
 
     def eAttributes(attributes)
-      elem = Model::EAttribute.new
-      elem.map_init(attributes)
-      @current.last.add_attribute(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EAttribute, attributes)
+      @current.last.add_attribute(e)
+      @current.push(e)
     end
 
     def eReferences(attributes)
-      elem = Model::EReference.new
-      elem.map_init(attributes)
-      @current.last.add_reference(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EReference, attributes)
+      @current.last.add_reference(e)
+      @current.push(e)
     end
 
     def eTypeArguments(attributes)
-      elem = Model::EGenericType.new
-      elem.map_init(attributes)
-      @current.last.add_type_argument(elem)
-      @current.push(elem)
+      e = new_with_attributes(Model::EGenericType , attributes)
+      @current.last.add_type_argument(e)
+      @current.push(e)
     end
 
     def eTypeParameters(attributes)
-      elem = Model::ETypeParameter.new
-      elem.map_init(attributes)
-      @current.last.add_type_parameter(elem)
-      @current.push(elem)
-    end
-
-    private
-
-    def xsi_type(attributes)
-      xt = attributes['xsi:type']
-      xt = xt[6..-1] if xt.start_with?('ecore:')
-      xt
+      e = new_with_attributes(Model::ETypeParameter, attributes)
+      @current.last.add_type_parameter(e)
+      @current.push(e)
     end
   end
 end

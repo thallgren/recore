@@ -12,7 +12,6 @@ module ReCore::IO::XML
         result = handler.result
         expect(result).to be_a(ReCore::Ecore::Model::EPackage)
         ReCore::Ecore::Resolver.new.accept(result, result)
-
         ReCore::Ecore::Generator::Interface.new.accept(result, $>)
       end
     end

@@ -1,18 +1,10 @@
 require 'spec_helper'
 
-module ReCore::Ecore
-  RSpec.describe DSL do
-    it 'can add class using dsl block' do
-      handler = ReCore::Ecore::Parser::Handler.new
-      parser = ReCore::IO::XML::Parser.new(handler)
-      File.open(File.join(ReCore::MODULE_DIR, 'Ecore.ecore')) do |file|
-        parser.parse(file)
-      end
-      ecore_package = handler.result
-      ReCore::Ecore::Resolver.new.accept(ecore_package, nil)
-
+module ReCore::Ecore::Generator
+  describe 'Interface generator' do
+    it 'can generate ruby interfaces' do
       resource = []
-      ReCore::Ecore::DSL.new(resource) do
+      dsl = ReCore::Ecore::DSL.new(resource) do
         package('Foo', 'http://foo.bar.com/foo') do
           add_class('A') do
             abstract
@@ -38,7 +30,6 @@ module ReCore::Ecore
       end
       package = resource[0]
       expect(package).to be_a(ReCore::Ecore::Model::EPackage)
-      ReCore::Ecore::Resolver.new(ecore_package).accept(package, nil)
       classes = package.classes
       expect(classes).to be_a(Hash)
 
@@ -46,3 +37,4 @@ module ReCore::Ecore
     end
   end
 end
+

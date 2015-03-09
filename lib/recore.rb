@@ -2,7 +2,7 @@ module ReCore
 end
 
 require 'recore/version'
-require 'recore/util'
+require 'recore/interface_support'
 require 'recore/io'
 require 'recore/ecore'
 

@@ -1,4 +1,6 @@
 module ReCore::Ecore
+  NS_PREFIX = 'ecore'
+  NS_URI = 'http://www.eclipse.org/emf/2002/Ecore'
 end
 
 require 'recore/ecore/dsl'

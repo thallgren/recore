@@ -3,37 +3,25 @@ require 'recore/ecore/model'
 class ReCore::Ecore::DSL
   Model = ReCore::Ecore::Model
 
-  def initialize
-    handler = ReCore::Ecore::Parser::Handler.new
-    parser = ReCore::IO::XML::Parser.new(handler)
-    File.open(File.join(RECORE_ROOT, 'model', 'Ecore.ecore')) do |file|
-      parser.parse(file)
-    end
-    @ecore = handler.result
-    @package = Model::EPackage.new
+  def self.new(resource, &block)
+    dsl = super(resource)
+    dsl.instance_eval(&block) if block_given?
+    dsl
+  end
+
+  # @param resource [#<<]
+  def initialize(resource)
     @type_mapper = ReCore::Ecore::TypeMapper::ECORE_MAPPER
+    @resource = resource
   end
 
   def package(name, ns_uri = nil, &block)
-    package = @package
+    package = Model::EPackage.new
     package.name = name
     package.ns_uri = ns_uri
     package.ns_prefix = name.downcase
     DslEPackage.new(@type_mapper, package).instance_eval &block
-    package
-  end
-
-  def resolve
-    ReCore::Ecore::Resolver.new.accept(@package, self)
-    @package
-  end
-
-  def resolve_uri(uri)
-    begin
-      @package.resolve_uri(uri)
-    rescue ArgumentError
-      @ecore.resolve_uri(uri)
-    end
+    @resource << package
   end
 
   class DslEStructuredFeature
@@ -55,7 +43,7 @@ class ReCore::Ecore::DSL
 
     def _prop(prop, name, type, required, many, &block)
       prop.name = name
-      prop.e_type = "#//#{type}"
+      prop.e_type = type
       prop.lower_bound = required ? 1 : 0
       prop.upper_bound = many ? -1 : 1
       DslEStructuredFeature.new(prop, @type_mapper).instance_eval(&block) if block_given?
@@ -66,7 +54,13 @@ class ReCore::Ecore::DSL
     def _attr(name, type, required = false, many = false, &block)
       attr = Model::EAttribute.new
       @eclass.add_attribute(attr)
-      type = @type_mapper.ruby_to_ecore(type) if type.is_a?(Class)
+      if type.is_a?(Class)
+        type = @type_mapper.ruby_to_ecore_uri(type)
+      elsif type.is_a?(Array)
+        type = "#{type[0]}: #{type[1]}#//#{type[2]}"
+      else
+        type = "ecore:EDataType foo#//#{type}"
+      end
       _prop(attr, name,  type, required, many, &block)
     end
 
@@ -92,7 +86,12 @@ class ReCore::Ecore::DSL
       ref = Model::EReference.new
       @eclass.add_reference(ref)
       ref.containment = @containment
-      ref.opposite = "#//#{type}/#{opposite}" unless opposite.nil?
+      if type.is_a?(Array)
+        type = "#{type[0]}: #{type[1]}#//#{type[2]}"
+      else
+        type = "#//#{type}"
+      end
+      ref.opposite = "#{type}/#{opposite}" unless opposite.nil?
       ref.keys = keys.map { |k| "#//#{k}" } unless keys.nil?
       _prop(ref, name, type, required, many, &block)
     end

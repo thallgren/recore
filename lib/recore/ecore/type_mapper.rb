@@ -1,5 +1,7 @@
 module ReCore::Ecore
 class TypeMapper
+  ECORE_DATA_TYPE_URI_PREFIX = "#{NS_PREFIX}:EDataType #{NS_URI}#//"
+  ECORE_DATA_TYPE_URI_PATTERN = Regexp.compile("#{Regexp.escape(ECORE_DATA_TYPE_URI_PREFIX)}(\\w+)$")
 
   def initialize
     @ecore_to_ruby = {}
@@ -29,6 +31,13 @@ class TypeMapper
     ruby_name
   end
 
+  # @param ecore_uri [String]
+  # @return [String]
+  def ecore__uri_to_ruby(ecore_uri)
+    raise ArgumentError, "Not an ECore data type URI '#{ecore_uri}'" unless ecore_uri =~ ECORE_DATA_TYPE_URI_PATTERN
+    ecore_to_ruby($1)
+  end
+
   # @param ruby_name_or_class [Class|String]
   # @return [String]
   def ruby_to_ecore(ruby_name_or_class)
@@ -36,6 +45,12 @@ class TypeMapper
     ecore_name = @ruby_to_ecore[ruby_name]
     raise ArgumentError, "Ecore type unknown for ruby class '#{ruby_name}'" if ecore_name.nil?
     ecore_name
+  end
+
+  # @param ruby_name_or_class [Class|String]
+  # @return [String]
+  def ruby_to_ecore_uri(ruby_name_or_class)
+    ECORE_DATA_TYPE_URI_PREFIX + ruby_to_ecore(ruby_name_or_class)
   end
 
   # @param *ecore_names [String]
