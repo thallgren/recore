@@ -4,13 +4,17 @@ module ReCore::Ecore
 
   module Acceptor
     METHOD_PREFIX = 'accept_'.freeze
-    DOUBLE_COLON = '::'.freeze
+
+    @@names = {}.compare_by_identity
 
     def accept(e, args)
-      @@names ||= {}
+      return if e.nil?
       if (name = @@names[e.class]).nil?
-        name = METHOD_PREFIX + e.class.name.split(DOUBLE_COLON).last
-        @@names[e.class] = name
+        name = e.class.name
+        cidx = name.rindex(':')
+        name = name[cidx+1..-1] unless cidx.nil?
+        name = METHOD_PREFIX + name
+        @@names[e.class] = name.to_sym
       end
       send(name, e, args) unless e.nil?
     end
