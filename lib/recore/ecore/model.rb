@@ -416,7 +416,7 @@ class EClass < EClassifier
     end
   end
 
-  # @param super_types [Array<String>]
+  # @param super_types [Array<String>,String,nil]
   def super_types=(super_types)
     @super_types = array_or_nil(super_types)
   end

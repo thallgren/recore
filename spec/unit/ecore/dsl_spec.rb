@@ -20,7 +20,7 @@ module ReCore::Ecore
               one 'int_attr', Integer
             end
             containments do
-              many 'many_b', 'B', 'one_a'
+              many 'many_bs', 'B', 'one_a'
             end
           end
           add_class('B') do
@@ -42,7 +42,11 @@ module ReCore::Ecore
       classes = package.classes
       expect(classes).to be_a(Hash)
 
-      ReCore::Ecore::Generator::Interface.new.accept(package, $>)
+      interface_generator =  ReCore::Ecore::Generator::Interface.new
+      interface_generator.accept(package, $>)
+
+      impl_generator =  ReCore::Ecore::Generator::Impl.new(interface_generator)
+      impl_generator.accept(package, $>)
     end
   end
 end

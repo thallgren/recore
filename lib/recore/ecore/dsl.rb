@@ -1,7 +1,7 @@
 require 'recore/ecore/model'
 
 class ReCore::Ecore::DSL
-  Model = ReCore::Ecore::Model
+  include ReCore::Ecore::Model
 
   def self.new(resource, &block)
     dsl = super(resource)
@@ -16,7 +16,7 @@ class ReCore::Ecore::DSL
   end
 
   def package(name, ns_uri = nil, &block)
-    package = Model::EPackage.new
+    package = EPackage.new
     package.name = name
     package.ns_uri = ns_uri
     package.ns_prefix = name.downcase
@@ -35,7 +35,7 @@ class ReCore::Ecore::DSL
 
   class DslProps
     # @param type_mapper [ReCore::Ecore::TypeMapper]
-    # @param eclass [ReCore::Ecore::Model::EClass]
+    # @param eclass [ReCore::Ecore::EClass]
     def initialize(type_mapper, eclass)
       @type_mapper = type_mapper
       @eclass = eclass
@@ -52,7 +52,7 @@ class ReCore::Ecore::DSL
 
   class DslEClassAttrs < DslProps
     def _attr(name, type, required = false, many = false, &block)
-      attr = Model::EAttribute.new
+      attr = ReCore::Ecore::Model::EAttribute.new
       @eclass.add_attribute(attr)
       if type.is_a?(Class)
         type = @type_mapper.ruby_to_ecore_uri(type)
@@ -75,7 +75,7 @@ class ReCore::Ecore::DSL
 
   class DslEClassRefs < DslProps
     # @param type_mapper [ReCore::Ecore::TypeMapper]
-    # @param eclass [ReCore::Ecore::Model::EClass]
+    # @param eclass [ReCore::Ecore::EClass]
     # @param containment [Boolean]
     def initialize(type_mapper, eclass, containment)
       super(type_mapper, eclass)
@@ -83,7 +83,7 @@ class ReCore::Ecore::DSL
     end
 
     def _ref(name, type, required, opposite, keys, many, &block)
-      ref = Model::EReference.new
+      ref = ReCore::Ecore::Model::EReference.new
       @eclass.add_reference(ref)
       ref.containment = @containment
       if type.is_a?(Array)
@@ -106,7 +106,7 @@ class ReCore::Ecore::DSL
   end
 
   class DslEClass
-    # @param eclass [ReCore::Ecore::Model::EClass]
+    # @param eclass [ReCore::Ecore::EClass]
     def initialize(type_mapper, eclass)
       @type_mapper = type_mapper
       @eclass = eclass
@@ -148,14 +148,14 @@ class ReCore::Ecore::DSL
     end
 
     def add_class(name, &block)
-      eclass = Model::EClass.new
+      eclass = ReCore::Ecore::Model::EClass.new
       eclass.name = name
       @package.add_class(eclass)
       DslEClass.new(@type_mapper, eclass).instance_eval(&block) if block_given?
     end
 
     def add_data_type(name, instance_class_name = nil, serializable = true)
-      data_type = Model::EDataType.new
+      data_type = ReCore::Ecore::Model::EDataType.new
       data_type.name = name
       data_type.instance_class_name = instance_class_name
       data_type.serializable = serializable

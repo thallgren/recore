@@ -1,28 +1,27 @@
 require 'nokogiri'
 
 module ReCore::IO::XML
-
-  class AttributeKey
-    # @param ns_uri [String]
-    # @param name [String]
-    def initialize(ns_uri, name, method)
-      @ns_uri = ns_uri
-      @name = name
-      @method = method
-    end
-
-    # @param attribute Nokogiri::XML::SAX::Parser::Attribute
-    def key_for?(attribute)
-      uri = attribute.uri
-      (uri.nil? || uri == @ns_uri) && attribute.localname == @name
-    end
-
-    def assign(attribute, instance)
-      instance.send(@method, attribute.value)
-    end
-  end
-
   module Handler
+    class AttributeKey
+      # @param ns_uri [String]
+      # @param name [String]
+      def initialize(ns_uri, name, method)
+        @ns_uri = ns_uri
+        @name = name
+        @method = method
+      end
+
+      # @param attribute Nokogiri::XML::SAX::Parser::Attribute
+      def key_for?(attribute)
+        uri = attribute.uri
+        (uri.nil? || uri == @ns_uri) && attribute.localname == @name
+      end
+
+      def assign(attribute, instance)
+        instance.send(@method, attribute.value)
+      end
+    end
+
     XSI_NAMESPACE = 'http://www.w3.org/2001/XMLSchema-instance'
     XSI_TYPE_KEY = AttributeKey.new(XSI_NAMESPACE, 'type', nil)
 

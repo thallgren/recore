@@ -139,7 +139,7 @@ module ReCore::Ecore::Generator
     # @param args [Array<Object>]
     def accept_EOperation(operation, args)
       prop_names = args[0]
-      type_name = @type_mapper.map_type(operation)
+      type_name = type_name(operation)
       mname = method_name(operation.name)
       if setter?(operation)
         mname = mname + '='
@@ -160,7 +160,7 @@ module ReCore::Ecore::Generator
         bld << '    # @param '
         bld << param_name
         bld << ' ['
-        bld << @type_mapper.map_type(param)
+        bld << type_name(param)
         bld.puts(']')
       end
 
@@ -185,7 +185,7 @@ module ReCore::Ecore::Generator
     # @param args [Array<Object>]
     def accept_EStructuralFeature(feature, args)
       prop_names = args[0]
-      type_name = @type_mapper.map_type(feature)
+      type_name = type_name(feature)
       uname = attribute_name(feature.name)
       if type_name == 'Boolean'
         uname = uname + '?'
@@ -235,6 +235,10 @@ module ReCore::Ecore::Generator
         @attribute_name_map[name] = aname
       end
       aname
+    end
+
+    def type_name(typed_element)
+      @type_mapper.map_type(typed_element)
     end
 
     def underscore(name)
