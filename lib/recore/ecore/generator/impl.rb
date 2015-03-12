@@ -2,9 +2,6 @@ require 'recore/ecore/acceptor'
 require 'recore/ecore/type_mapper'
 
 module ReCore::Ecore::Generator
-
-  NEWLINE = "\n".freeze
-
   class Impl
     include ReCore::Ecore::Acceptor
 
@@ -17,30 +14,24 @@ module ReCore::Ecore::Generator
     # @param package [ReCore::Ecore::Model::EPackage]
     # @param bld [IO]
     def accept_EPackage(package, bld)
-      bld.puts
-      bld << 'module ' << package.name.capitalize << '::Impl'
+      bld << "\nmodule " << package.name.capitalize << '::Impl'
       package.classes.values.sort.each { |c| accept(c, bld) }
-      bld.puts('end')
+      bld << "end\n"
     end
 
     # @param clazz [ReCore::Ecore::Model::EClass]
     # @param bld [IO]
     def accept_EClass(clazz, bld)
-      bld.puts
-      bld << '  class '
-      bld << clazz.name
-      bld << 'Impl'
+      bld << "\n  class " << clazz.name << 'Impl'
       if clazz.super_types.empty?
         bld << ' < ' << @default_super_type unless @default_super_type.nil?
       else
-        bld << ' < ' << clazz.super_types.first << 'Impl'
+        bld << ' < ' << clazz.super_types.first.name << 'Impl'
       end
-      bld.puts
-      bld << '    include ' << clazz.name
-      bld.puts
+      bld << "\n    include " << clazz.name << "\n"
       clazz.attributes.each { |a| accept(a, bld) }
       clazz.references.each { |r| accept(r, bld) }
-      bld.puts('  end')
+      bld << "  end\n"
     end
 
     # @param feature [ReCore::Ecore::Model::EStructuralFeature]
@@ -50,13 +41,10 @@ module ReCore::Ecore::Generator
       type_name = @interface.type_name(feature)
 
       # Getter
-      bld.puts
-      bld << '    # @return [' << type_name << ']'
-      bld.puts
+      bld << "\n    # @return [" << type_name << "]\n"
       bld << '    def ' << uname
       bld << '?' if type_name == 'Boolean'
-      bld.puts
-      bld << '      @' << uname
+      bld << "\n      @" << uname
       dflt = feature.default_value_literal
       if feature.upper_bound < 0
         bld << ' || EMPTY_ARRAY'
@@ -74,15 +62,11 @@ module ReCore::Ecore::Generator
           create_from_string_call(feature, dflt, bld)
         end
       end
-      bld.puts
-      bld.puts('    end')
+      bld << "\n    end\n"
 
       # Setter
-      bld.puts
-      bld << '    # @param ' << uname << ' [' << type_name
-      bld.puts(']')
-      bld << '    def ' << uname << '=' << '(' << uname
-      bld.puts(')')
+      bld << "\n    # @param " << uname << ' [' << type_name << "]\n"
+      bld << '    def ' << uname << '=' << '(' << uname << ")\n"
       bld << '      @' << uname << ' = '
       if feature.upper_bound < 0
         bld << 'array_or_nil(' << uname << ')'
@@ -95,23 +79,17 @@ module ReCore::Ecore::Generator
       else
         bld << uname
       end
-      bld.puts
-      bld.puts('    end')
+      bld << "\n    end\n"
 
       if feature.upper_bound < 0
         # Adder
         sname = uname
         sname = sname[0..-2] if sname.end_with?('s')
-        bld.puts
-        bld << '    # @param ' << sname << ' [' << type_name[6, -2] << ']'
-        bld.puts
-        bld << '    def add_' << sname << '(' << sname << ')'
-        bld.puts
-        bld << '      @' << uname << ' ||= EMPTY_ARRAY'
-        bld.puts
+        bld << "\n    # @param " << sname << ' [' << type_name[6, -2] << "]\n"
+        bld << '    def add_' << sname << '(' << sname << ")\n"
+        bld << '      @' << uname << " ||= EMPTY_ARRAY\n"
         bld << '      @' << uname << ' << ' << sname
-        bld.puts
-        bld.puts('    end')
+        bld << "\n    end\n"
       end
 
       def create_from_string_call(feature, string, bld)
